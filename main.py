@@ -1,3 +1,4 @@
+from fastapi.middleware.cors import CORSMiddleware
 """
 FastAPI backend for the Bet‑Analyzer prototype.
 
@@ -21,6 +22,16 @@ from fastapi import FastAPI, HTTPException, Query
 from typing import Dict, List, Optional
 
 app = FastAPI(title="Bet Analyzer API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://bet-analyzer-frontend.vercel.app",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------------------------------------------------------------------
 # Mock data. In a production application this would be generated on the fly
