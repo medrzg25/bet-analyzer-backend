@@ -1,6 +1,6 @@
+import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import requests
 
 app = FastAPI()
 
@@ -17,60 +17,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-PMU_API = "https://online.turfinfo.api.pmu.fr/rest/client/infosForMeeting/programme/FR"
-
-
+# ✅ Scraping du PMU via l'API publique JSON
 @app.get("/api/programme")
 def programme():
-    # 👉 au lieu de renvoyer du mock, on récupère les vraies courses du jour
-    import datetime
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    url = "https://online.pmu.fr/rest/client/1/programme/"
+    r = requests.get(url)
 
-    url = f"{PMU_API}/{today}"
+    if r.status_code != 200:
+        return {"programme": []}
 
-    response = requests.get(url)
-    data = response.json()
+    data = r.json()
 
-    programme = []
-    for meeting in data.get("meetings", []):
-        for race in meeting.get("races", []):
-            programme.append({
-                "course_id": race["id"],
-                "hippodrome": meeting["name"],
-                "discipline": race.get("discipline"),
-                "distance_m": race.get("distance"),
-                "date": race.get("startTime")
-            })
+    courses = []
 
-    return {"programme": programme}
+    # Transforme les données PMU pour ton front
+    for item in data.get("programme", []):
+        courses.append({
+            "course_id": item["idReunion"],
+            "hippodrome": item["hippodrome"],
+            "discipline": item["specialite"],
+            "distance_m": item["distance"],
+            "date": item["dateCourse"]
+        })
+
+    return {"programme": courses}
 
 
 @app.get("/api/valuebets")
 def valuebets(top: int = 3):
-    # 👉 Exemple simple de calcul de valuebet à partir des cotes
-    url = "https://online.turfinfo.api.pmu.fr/rest/client/odd/currentOdd/FR"
-    data = requests.get(url).json()
+    url = "https://online.pmu.fr/rest/client/1/programme/"
+    r = requests.get(url)
 
-    valuebets_list = []
+    if r.status_code != 200:
+        return {"valuebets": []}
 
-    for meeting in data.get("meetings", []):
-        for race in meeting.get("races", []):
-            for runner in race.get("runners", []):
-                if "odds" in runner:
-                    cote = runner["odds"]["value"]
-                    if cote > 0:
-                        implied_prob = 1 / cote
-                        expected = (1 / cote) - implied_prob
+    data = r.json()
+    valuebets = []
 
-                        valuebets_list.append({
-                            "horse": runner["name"],
-                            "course_id": race["id"],
-                            "score": round(10 * expected, 2),
-                            "probability": round(implied_prob, 2),
-                            "edge": round(expected, 2),
-                        })
+    for item in data.get("programme", [])[:top]:
+        valuebets.append({
+            "horse": item["hippodrome"],
+            "course_id": item["idReunion"],
+            "score": 10,           # Placeholder (on améliorera après avec algo)
+            "probability": 0.50,   # Placeholder
+            "edge": 0.10           # Placeholder
+        })
 
-    # tri des meilleurs valuebets
-    valuebets_list = sorted(valuebets_list, key=lambda x: x["edge"], reverse=True)
-
-    return {"valuebets": valuebets_list[:top]}
+    return {"valuebets": valuebets}
