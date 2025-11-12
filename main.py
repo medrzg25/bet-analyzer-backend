@@ -7,7 +7,7 @@ app = FastAPI()
 origins = [
     "https://bet-analyzer-frontend.vercel.app",
     "http://localhost:3000",
-    "https://orange-scene-bc30.med-rzg.workers.dev"  # ton proxy Cloudflare
+    "https://orange-scene-bc30.med-rzg.workers.dev"
 ]
 
 app.add_middleware(
@@ -18,16 +18,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+CLOUDFLARE_PROXY = "https://orange-scene-bc30.med-rzg.workers.dev/?url="
+
 @app.get("/api/programme")
 def get_programme():
     try:
         pmu_url = "https://online.pmu.fr/rest/client/1/programme"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Accept": "application/json",
-            "Referer": "https://www.pmu.fr/",
-        }
-        res = requests.get(pmu_url, headers=headers, timeout=10)
+        proxy_url = CLOUDFLARE_PROXY + pmu_url
+        res = requests.get(proxy_url, timeout=10)
         res.raise_for_status()
         return res.json()
     except Exception as e:
